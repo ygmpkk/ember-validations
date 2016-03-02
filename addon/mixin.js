@@ -97,17 +97,50 @@ export default Ember.Mixin.create(setValidityMixin, {
             errors.addObjects(validator.errors);
           }
         }, this);
-        set(this, 'errors.' + sender.property, errors);
+        // fix validators object problem
+        var splits = sender.property.split(".");
+        if (splits.length > 2) {
+            // if over two path, assert is object
+            this.setObjByString(this, 'errors.' + sender.property, errors);
+        } else {
+            set(this, 'errors.' + sender.property, errors);
+        }
       });
     }, this);
   },
+  setObjByString: function(obj, str, val) {
+      // fix Ember set object not exist incorrect
+      var keys, key;
+      //make sure str is a string with length
+      if (!str || !str.length || Object.prototype.toString.call(str) !== "[object String]") {
+          return false;
+      }
+      if (obj !== Object(obj)) {
+          //if it's not an object, make it one
+          obj = {};
+      }
+      keys = str.split(".");
+      while (keys.length > 1) {
+          key = keys.shift();
+          if (obj !== Object(obj)) {
+              //if it's not an object, make it one
+              obj = {};
+          }
+          if (!(key in obj)) {
+              //if obj doesn't contain the key, add it and set it to an empty object
+              obj[key] = {};
+          }
+          obj = obj[key];
+      }
+      return obj[keys[0]] = val;
+  },
   buildValidators: function() {
-    var property;
+      var property;
 
-    for (property in this.validations) {
-      if (this.validations[property].constructor === Object) {
-        this.buildRuleValidator(property);
-      } else {
+      for (property in this.validations) {
+          if (this.validations[property].constructor === Object) {
+              this.buildRuleValidator(property);
+          } else {
         this.buildObjectValidator(property);
       }
     }
